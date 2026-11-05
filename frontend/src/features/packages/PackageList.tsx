@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { api } from "@/lib/api/client";
 import type { SavedPackage } from "@/lib/api/types";
 import { formatCents, formatDateTime, pluralize } from "@/lib/format";
+import { builderUrl } from "@/features/package-builder/builderRoutes";
 import { readSavedNotice } from "./savedNotice";
 
 type Message = { tone: BannerTone; title: string } | null;
@@ -77,7 +78,7 @@ export function PackageList() {
     <div className="rounded-xl bg-white p-6 shadow-sm">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Saved Packages</h1>
-        <Link href="/" className="rounded-md bg-blue-900 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800">
+        <Link href={builderUrl.newPackage} className="rounded-md bg-blue-900 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800">
           + Create New Package
         </Link>
       </div>
@@ -93,7 +94,7 @@ export function PackageList() {
       ) : packages.length === 0 ? (
         <div className="py-12 text-center text-slate-500">
           <p className="font-medium">No saved packages yet</p>
-          <Link href="/" className="text-sm text-blue-700 underline">
+          <Link href={builderUrl.newPackage} className="text-sm text-blue-700 underline">
             Build your first package
           </Link>
         </div>
@@ -157,7 +158,7 @@ function PackageCard({ pkg, badge, onDuplicate, onDelete }: PackageCardProps) {
         </div>
         <div className="flex shrink-0 gap-1.5">
           <Link
-            href={`/?package=${encodeURIComponent(pkg.id)}`}
+            href={builderUrl.package(pkg.id)}
             className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
           >
             Edit

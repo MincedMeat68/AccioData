@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { api, ApiError } from "@/lib/api/client";
 import type { Catalog, SavedPackage, ServiceCode, Template } from "@/lib/api/types";
+import type { SavedAction } from "@/features/packages/savedNotice";
+import type { BuilderSource } from "../builderRoutes";
 import { createSelectionRules } from "../rules/selectionRules";
 import { builderReducer, initialBuilderState, isDirty } from "../state/builderReducer";
 import { useEvaluation } from "./useEvaluation";
@@ -11,8 +13,12 @@ import { useEvaluation } from "./useEvaluation";
  * Wires the pure pieces together: selectionRules decides, the reducer
  * records, the API persists and prices.
  *
- * On mount it opens `packageId` if given (Edit from the list), otherwise the
- * most recently saved package (core requirement 9).
+ * On mount it opens what `source` asks for: a specific package (Edit), the
+ * most recently saved package (core requirement 9), or nothing (Create New).
+ * The builder is remounted when the source changes, so this runs once.
+ *
+ * `justSaved` confirms a save that happened just before this mount (the
+ * first save of a new package moves the URL to /?package=<id>).
  *
  * `onSaved` runs after a successful save; `wasEditing` is true when the
  * package already existed before this save (Save Changes / Save as New).
@@ -25,21 +31,28 @@ export interface SavedEvent {
 
 export function usePackageBuilder(
   catalog: Catalog,
-  packageId: string | null,
-  onSaved?: (event: SavedEvent) => void,
+  source: BuilderSource,
+  options: { justSaved?: SavedAction | null; onSaved?: (event: SavedEvent) => void } = {},
 ) {
+  const { onSaved } = options;
   const rules = useMemo(() => createSelectionRules(catalog), [catalog]);
   const [state, dispatch] = useReducer(builderReducer, initialBuilderState);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(source.kind !== "new");
   const [saving, setSaving] = useState(false);
   const { evaluation, pending, error: pricingError } = useEvaluation(state.selected);
 
+  // Captured at mount: the URL flag is cleared afterwards without remounting.
+  const [initial] = useState(() => ({ source, justSaved: options.justSaved ?? null }));
+
   useEffect(() => {
+    const { source, justSaved } = initial;
+    if (source.kind === "new") return;
+
     let cancelled = false;
-    setLoading(true);
-    (packageId ? api.getPackage(packageId) : api.latestPackage())
+    (source.kind === "package" ? api.getPackage(source.id) : api.latestPackage())
       .then((pkg) => {
-        if (!cancelled && pkg) dispatch({ type: "loaded", pkg });
+        if (cancelled || !pkg) return;
+        dispatch(justSaved ? { type: "saved", pkg, created: justSaved === "created" } : { type: "loaded", pkg });
       })
       .catch((e) => {
         if (cancelled) return;
@@ -52,7 +65,7 @@ export function usePackageBuilder(
     return () => {
       cancelled = true;
     };
-  }, [packageId]);
+  }, [initial]);
 
   const add = useCallback(
     (code: ServiceCode) => {
@@ -127,7 +140,6 @@ export function usePackageBuilder(
     confirm: useCallback(() => dispatch({ type: "confirmed" }), []),
     cancel: useCallback(() => dispatch({ type: "cancelled" }), []),
     rename: useCallback((name: string) => dispatch({ type: "renamed", name }), []),
-    reset: useCallback(() => dispatch({ type: "reset" }), []),
     applyTemplate: useCallback((template: Template) => dispatch({ type: "templateApplied", template }), []),
     dismissNotice: useCallback(() => dispatch({ type: "noticeDismissed" }), []),
   };

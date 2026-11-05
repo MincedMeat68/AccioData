@@ -1,32 +1,46 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { Banner } from "@/components/ui/Banner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { Catalog } from "@/lib/api/types";
-import { savedPackagesUrl } from "@/features/packages/savedNotice";
+import { savedPackagesUrl, type SavedAction } from "@/features/packages/savedNotice";
+import { builderUrl, type BuilderSource } from "../builderRoutes";
 import { usePackageBuilder, type SavedEvent } from "../hooks/usePackageBuilder";
 import { PackagePanel } from "./PackagePanel";
 import { ServiceCatalogPanel } from "./ServiceCatalogPanel";
 
 interface PackageBuilderProps {
   catalog: Catalog;
-  packageId: string | null;
+  source: BuilderSource;
+  /** A save that happened just before this mount, to confirm on screen. */
+  justSaved: SavedAction | null;
 }
 
-export function PackageBuilder({ catalog, packageId }: PackageBuilderProps) {
+export function PackageBuilder({ catalog, source, justSaved }: PackageBuilderProps) {
   const router = useRouter();
-  // Flow 5: saving an existing package (Save Changes / Save as New) returns
-  // to the package list, which highlights it. A brand-new package stays in
-  // the builder (Flow 1) so the user can keep refining it.
+  // Where a save leads:
+  // - Existing package (Save Changes / Save as New): back to the package list,
+  //   which highlights it (Flow 5).
+  // - A brand-new package's first save: stay in the builder (Flow 1), but move
+  //   the URL to /?package=<id> so a reload reopens this package rather than
+  //   an empty "new" draft.
   const onSaved = useCallback(
     ({ pkg, created, wasEditing }: SavedEvent) => {
       if (wasEditing) router.push(savedPackagesUrl(pkg.id, created ? "created" : "updated"));
+      else router.replace(builderUrl.package(pkg.id, "created"), { scroll: false });
     },
     [router],
   );
-  const builder = usePackageBuilder(catalog, packageId, onSaved);
+  const builder = usePackageBuilder(catalog, source, { justSaved, onSaved });
+
+  // Drop the one-time saved flag so a reload doesn't repeat the banner. Same
+  // source, so this does not remount the builder.
+  const packageId = source.kind === "package" ? source.id : null;
+  useEffect(() => {
+    if (justSaved && packageId) router.replace(builderUrl.package(packageId), { scroll: false });
+  }, [justSaved, packageId, router]);
   const { state, evaluation } = builder;
   const discounts = evaluation?.quote.discounts ?? [];
 
@@ -49,7 +63,7 @@ export function PackageBuilder({ catalog, packageId }: PackageBuilderProps) {
       </div>
 
       {builder.loading ? (
-        <p className="py-12 text-center text-slate-500">Loading your most recent package…</p>
+        <p className="py-12 text-center text-slate-500">{source.kind === "latest" ? "Loading your most recent package…" : "Loading package…"}</p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           <ServiceCatalogPanel

@@ -58,6 +58,10 @@ docker compose up --build   # http://localhost:3000
 - **Removing a service others depend on** opens a confirmation dialog that names exactly what will also be removed. Cancel leaves everything as it was ([ADR 0005](docs/adr/0005-dependent-removal-and-conflict-ux.md)).
 - **Pricing breakdown:** subtotal, each discount on its own line, total, amount saved, and a hint showing how many more services reach the next volume tier.
 - **Save** with a name, **reopen the most recently saved package** when you return, **edit and save again**. Saving changes to an existing package (Flow 5) returns to Saved Packages, which confirms the save and highlights the package. A brand-new package stays in the builder after its first save (Flow 1).
+- **The URL decides what the builder shows**, so a reload always shows the same thing:
+  - `/` reopens the most recently saved package.
+  - **+ Create New Package** and **Start New Package** open an empty draft at `/?new=1`.
+  - **Edit** opens `/?package=<id>`.
 
 **Stretch goals done**
 - Saved packages list: summary, edit, duplicate, delete (with confirmation).

@@ -1,4 +1,6 @@
+import Link from "next/link";
 import type { Catalog, Template } from "@/lib/api/types";
+import { builderUrl } from "../builderRoutes";
 import { formatCents, pluralize } from "@/lib/format";
 import type { PackageBuilder } from "../hooks/usePackageBuilder";
 import { PricingBreakdown } from "./PricingBreakdown";
@@ -112,13 +114,12 @@ export function PackagePanel({ catalog, builder }: PackagePanelProps) {
             >
               Save as New
             </button>
-            <button
-              type="button"
-              onClick={builder.reset}
-              className="flex-1 rounded-md border border-slate-300 bg-white py-2 text-sm font-medium hover:bg-slate-50"
+            <Link
+              href={builderUrl.newPackage}
+              className="flex-1 rounded-md border border-slate-300 bg-white py-2 text-center text-sm font-medium hover:bg-slate-50"
             >
               Start New Package
-            </button>
+            </Link>
           </div>
         )}
       </form>

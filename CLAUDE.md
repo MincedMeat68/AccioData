@@ -36,6 +36,7 @@ Layers can only depend on the layers above them: `app/domain` → `app/applicati
 
 - The browser only calls Next.js; `next.config.ts` rewrites `/api/*` to `BACKEND_URL` (default `http://127.0.0.1:4567`).
 - `GET /api/catalog` sends the rules **as data**. `features/package-builder/rules/selectionRules.ts` is a *generic* interpreter of them, with no hard-coded service codes. It returns decisions (`add` / `blocked` / `conflict` / `confirm`); `state/builderReducer.ts` (pure) records them; `hooks/usePackageBuilder.ts` connects the two.
+- **What the builder opens is decided by the URL** (`features/package-builder/builderRoutes.ts`): `/` reopens the latest saved package (requirement 9), `/?new=1` is an empty draft, and `/?package=<id>` edits a specific package. The builder remounts when this changes. Link to it through `builderUrl.*`, never a bare `/`, unless "latest" is what you mean. After a new package's first save, the URL moves to `/?package=<id>`, so a reload keeps it. Saving an existing package goes to `/packages?saved=<id>&action=…`.
 - **Pricing is never calculated on the frontend.** `useEvaluation` calls `POST /api/packages/evaluate` (debounced, aborting earlier requests).
 - Removing a service others depend on, and replacing a superseded service, both go through `ConfirmDialog`. Cancel must leave the state unchanged (docs/adr/0005).
 

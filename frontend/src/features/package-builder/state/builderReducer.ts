@@ -26,7 +26,6 @@ export interface BuilderState {
 export type BuilderAction =
   | { type: "loaded"; pkg: SavedPackage }
   | { type: "saved"; pkg: SavedPackage; created: boolean }
-  | { type: "reset" }
   | { type: "templateApplied"; template: Template }
   | { type: "renamed"; name: string }
   | { type: "selectionChanged"; next: ServiceCode[]; notice?: Notice | null }
@@ -77,9 +76,6 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
           message: `"${action.pkg.name}" has been ${action.created ? "created" : "updated"}.`,
         },
       };
-
-    case "reset":
-      return initialBuilderState;
 
     case "templateApplied":
       return {
