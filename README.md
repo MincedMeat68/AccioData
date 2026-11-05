@@ -145,11 +145,12 @@ The spec's own figures conflict with its rules in several places: the Comprehens
 
 ## Known issues
 
-- **`npm audit` reports a high-severity PostCSS advisory** (GHSA-qx2v-qp2m-jg93 and related). The vulnerable PostCSS is a copy bundled inside Next.js 15 (`node_modules/next/node_modules/postcss`). It only runs at build time on our own CSS, so this app is not exposed. The only fix offered is Next.js 16, a major version. We stayed on Next 15.5 rather than take on a framework upgrade during a time-boxed assessment. **Next step:** upgrade to Next 16 with its codemod (`npx @next/codemod@latest upgrade`), then re-run the typecheck, build and tests. The App Router code here uses no APIs that Next 16 removes, so the upgrade should be small.
-- **`npm install` warns that `eslint@9` is deprecated.** Next 15's lint config (`eslint-config-next@15`) only supports ESLint up to 9, so ESLint 10 also has to wait for the Next 16 upgrade above. ESLint is a development-only tool.
-- **Other audit findings are already fixed.**
-  - Vitest was upgraded from 3 to 5 to clear two critical advisories, in `tinypool` and `@vitest/mocker`. This is why Node 22.12+ is required.
-  - An npm `overrides` entry in `frontend/package.json` forces `minimatch@11` under `@typescript-eslint`, because `@typescript-eslint` still asks for a vulnerable `minimatch@10`. Remove the override once `@typescript-eslint` updates.
+- **`npm install` warns that `eslint@9` is deprecated.** Next 15's lint config (`eslint-config-next@15`) only supports ESLint up to 9. ESLint 10 needs Next 16. ESLint is a development-only tool.
+- **We are on Next.js 15.5, not 16.** We avoided a major framework upgrade during a time-boxed assessment. **Next step:** upgrade with Next's codemod (`npx @next/codemod@latest upgrade`), move to ESLint 10, remove the `next → postcss` override below, then re-run the typecheck, build and tests. The App Router code here uses no APIs that Next 16 removes, so the upgrade should be small.
+- **`npm audit` reports 0 vulnerabilities.** Three findings were fixed:
+  - **PostCSS (high, GHSA-qx2v-qp2m-jg93 and related):** Next 15 pins its own copy of `postcss@8.4.31`. An npm `overrides` entry in `frontend/package.json` points Next at the patched `postcss@^8.5.23`, the same 8.x line that Next 16 ships with. `npm audit` only offered a forced Next 16 upgrade. We checked the production build and the dev server both compile the Tailwind CSS correctly.
+  - **Vitest (2 critical, in `tinypool` and `@vitest/mocker`):** upgraded from 3 to 5. This is why Node 22.12+ is required.
+  - **minimatch (moderate):** an override forces `minimatch@11` under `@typescript-eslint`, which still asks for a vulnerable `minimatch@10`. Remove the override once `@typescript-eslint` updates.
 
 ## With more time
 
