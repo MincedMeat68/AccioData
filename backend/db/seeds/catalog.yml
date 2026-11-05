@@ -1,0 +1,139 @@
+# Seed data for the service catalog and its business rules.
+#
+# At runtime the catalog lives in SQLite (services, service_requirements,
+# service_conflicts, discount_rules, package_templates). `rake db:seed` loads
+# this file into those tables idempotently, and the app reads them through
+# CatalogRepository. The frontend receives the same rules as data from
+# GET /api/catalog.
+#
+# Prices are integer cents to avoid floating-point rounding.
+
+categories:
+  - code: criminal
+    name: Criminal
+  - code: verification
+    name: Verification
+  - code: driving
+    name: Driving
+  - code: drug_screening
+    name: Drug Screening
+
+services:
+  - code: state_criminal
+    name: State Criminal Search
+    category: criminal
+    price_cents: 1500
+    description: Searches felony and misdemeanor records held in statewide court repositories.
+  - code: county_criminal
+    name: County Criminal Search
+    category: criminal
+    price_cents: 2500
+    description: Searches records directly at county courthouses, the most current criminal source.
+  - code: federal_criminal
+    name: Federal Criminal Search
+    category: criminal
+    price_cents: 3000
+    description: Searches U.S. District Court records for federal offenses such as fraud and trafficking.
+  - code: national_criminal
+    name: National Criminal Database
+    category: criminal
+    price_cents: 4000
+    description: Multi-jurisdictional database sweep; works standalone or alongside other criminal searches.
+  - code: employment_verification
+    name: Employment Verification
+    category: verification
+    price_cents: 3500
+    description: Confirms past employers, dates of employment, and job titles.
+  - code: education_verification
+    name: Education Verification
+    category: verification
+    price_cents: 3500
+    description: Confirms degrees, attendance dates, and institutions.
+  - code: license_verification
+    name: Professional License Verification
+    category: verification
+    price_cents: 3000
+    description: Confirms professional licenses and certifications are valid and in good standing.
+  - code: mvr
+    name: Motor Vehicle Report (MVR)
+    category: driving
+    price_cents: 2000
+    description: Driving history including license status, violations, and accidents.
+  - code: drug_5_panel
+    name: Drug Test (5-Panel)
+    category: drug_screening
+    price_cents: 4500
+    description: Screens for five common substance classes.
+  - code: drug_10_panel
+    name: Drug Test (10-Panel)
+    category: drug_screening
+    price_cents: 6500
+    description: Screens for ten substance classes, including everything in the 5-Panel.
+
+rules:
+  # "service requires prerequisite": the service cannot be in a package unless
+  # the prerequisite is also in it.
+  requirements:
+    - service: county_criminal
+      requires: state_criminal
+    - service: federal_criminal
+      requires: state_criminal
+
+  # Mutually exclusive pairs. "supersedes" means the first service fully
+  # includes the second, so the UI can offer to replace it instead of only
+  # rejecting.
+  conflicts:
+    - service: drug_10_panel
+      conflicts_with: drug_5_panel
+      supersedes: true
+      reason: the 10-Panel includes all 5-Panel tests
+
+# Discounts are applied in this order and all stack. Volume tiers are mutually
+# exclusive: only the highest tier reached applies.
+discounts:
+  - type: volume
+    code: volume
+    tiers:
+      - min_services: 8
+        percent: 15
+      - min_services: 5
+        percent: 10
+  - type: bundle
+    code: criminal_bundle
+    name: Criminal Bundle Discount
+    category: criminal
+    amount_cents: 2000
+  - type: bundle
+    code: verification_bundle
+    name: Verification Bundle Discount
+    category: verification
+    amount_cents: 1500
+
+# Predefined templates. Prices are deliberately NOT stored here; the pricing
+# engine computes them (see docs/spec-discrepancies.md).
+templates:
+  - code: basic
+    name: Basic Package
+    services: [state_criminal, employment_verification, drug_5_panel]
+  - code: standard
+    name: Standard Package
+    services:
+      - state_criminal
+      - county_criminal
+      - federal_criminal
+      - national_criminal
+      - employment_verification
+      - education_verification
+      - drug_5_panel
+  - code: comprehensive
+    name: Comprehensive Package
+    services:
+      - state_criminal
+      - county_criminal
+      - federal_criminal
+      - national_criminal
+      - employment_verification
+      - education_verification
+      - license_verification
+      - mvr
+      - drug_10_panel

@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+backend/vendor/
+.bundle/
+
+# Build output
+frontend/.next/
+frontend/out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Databases (created by migrations; never committed)
+backend/db/*.sqlite3
+backend/db/*.sqlite3-*
+*.sqlite3
+
+# Env / editor / OS
+.env
+.env.local
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+coverage/

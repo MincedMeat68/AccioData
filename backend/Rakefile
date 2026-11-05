@@ -1,0 +1,39 @@
+# frozen_string_literal: true
+
+require_relative "config/boot"
+
+def database
+  @database ||= Infrastructure::Persistence::Database.connect(Container.database_path)
+end
+
+namespace :db do
+  desc "Run pending migrations"
+  task :migrate do
+    Infrastructure::Persistence::Database.migrate!(database)
+    puts "Migrated #{Container.database_path}"
+  end
+
+  desc "Load db/seeds/catalog.yml into the catalog tables (idempotent)"
+  task seed: :migrate do
+    Infrastructure::Persistence::CatalogSeeder.new(database).seed_file(Container::SEED_FILE)
+    puts "Seeded catalog from #{Container::SEED_FILE}"
+  end
+
+  desc "Delete the database file, then migrate and seed"
+  task :reset do
+    path = Container.database_path
+    File.delete(path) if File.exist?(path)
+    Rake::Task["db:seed"].invoke
+  end
+
+  desc "Migrate and seed"
+  task setup: :seed
+end
+
+begin
+  require "rspec/core/rake_task"
+  RSpec::Core::RakeTask.new(:spec)
+  task default: :spec
+rescue LoadError
+  # rspec is a test-group gem; not available in production installs
+end

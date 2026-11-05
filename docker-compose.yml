@@ -1,0 +1,25 @@
+# Alternative to `npm run setup && npm run dev` for machines without Ruby.
+#   docker compose up --build    ->  http://localhost:3000
+services:
+  backend:
+    build: ./backend
+    volumes:
+      - package-data:/data
+    healthcheck:
+      test: ["CMD", "ruby", "-rnet/http", "-e", "exit Net::HTTP.get_response(URI('http://127.0.0.1:4567/api/health')).is_a?(Net::HTTPSuccess)"]
+      interval: 5s
+      retries: 10
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_URL: http://backend:4567
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  package-data:
