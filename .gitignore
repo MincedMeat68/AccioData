@@ -14,6 +14,14 @@ backend/db/*.sqlite3
 backend/db/*.sqlite3-*
 *.sqlite3
 
+# Ruby tooling
+*.gem
+*.rbc
+.byebug_history
+.rvmrc
+tmp/
+.yardoc/
+
 # Env / editor / OS
 .env
 .env.local
