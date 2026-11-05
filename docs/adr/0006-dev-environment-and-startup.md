@@ -13,7 +13,8 @@ The app is developed on Windows, and the evaluator may be on macOS. The stack (N
   - `npm run dev`: runs both servers through `concurrently`, with labelled output.
   - `npm test`: runs RSpec and Vitest.
 - **Next.js proxies `/api/*` to Sinatra** with `rewrites`, so the browser sees one origin and no CORS setup is needed. The target is `127.0.0.1`, not `localhost`, because Node may resolve `localhost` to IPv6 `::1` while the Ruby server listens on IPv4.
-- **WEBrick, not Puma.** WEBrick is pure Ruby, so nothing needs compiling on the evaluator's machine. Production throughput is irrelevant here.
+- **WEBrick, not Puma.** WEBrick is pure Ruby, so it adds nothing to compile. Production throughput is irrelevant here.
+- **Native extensions:** `sqlite3` is precompiled for every platform. The one gem that compiles is `bigdecimal`, a dependency of Sequel. The recommended Ruby installs (Homebrew with Xcode Command Line Tools, RubyInstaller with DevKit) already include a compiler. The backend Docker image compiles it in a build stage, then copies the installed gems into a slim runtime image that has no compiler.
 - **No web fonts are downloaded at build time** (the system font stack is used), so `next build` works offline.
 - **`.gitattributes` forces LF line endings**, so files checked out on Windows still work inside Linux containers.
 - **Version pins:** `.ruby-version` is 3.3.6 and `.nvmrc` is 22 (Vitest 5 requires Node 22.12+; Node 20 reached end-of-life in April 2026). The Gemfile requires Ruby 3.2 or later, the first version with `Data`.

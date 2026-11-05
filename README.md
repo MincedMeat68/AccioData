@@ -27,7 +27,7 @@ npm run dev     # API on http://127.0.0.1:4567, app on http://localhost:3000
 
 Open **http://localhost:3000**.
 
-No native compilation is needed: `sqlite3` installs as a precompiled gem on every platform (see [ADR 0001](docs/adr/0001-persistence-sqlite-sequel.md)).
+`sqlite3` installs as a precompiled gem on every platform (see [ADR 0001](docs/adr/0001-persistence-sqlite-sequel.md)). One small gem, `bigdecimal` (a Sequel dependency), compiles a C extension during `bundle install`. The tools above already include a compiler: Homebrew installs Apple's Xcode Command Line Tools, and the Windows RubyInstaller package includes a DevKit. On Linux, install `build-essential` or your distribution's equivalent.
 
 ### Option B: Docker
 

@@ -9,7 +9,8 @@ gem "rake", "~> 13.2"
 gem "sequel", "~> 5.86"
 gem "sinatra", "~> 4.1"
 # Ships precompiled native gems for Windows, macOS (Intel + Apple Silicon)
-# and Linux; Gemfile.lock lists every platform, so no compiler is needed.
+# and Linux; Gemfile.lock lists every platform, so SQLite never compiles.
+# (sequel's bigdecimal dependency does compile a small C extension.)
 gem "sqlite3", "~> 2.1"
 # Pure-Ruby server: nothing to compile on an evaluator's machine.
 gem "webrick", "~> 1.9"
