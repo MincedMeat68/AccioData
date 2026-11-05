@@ -292,6 +292,81 @@ The spec's own figures conflict with its rules in several places: the Comprehens
 - **An admin screen for the catalog:** the rules are already data, so this is a set of create/update/delete endpoints plus validation, such as rejecting circular requirements.
 - **Search and filter** for a larger catalog.
 
-## Working with AI
+## How this was planned (working with AI)
 
-Built with Claude Code. The process: planning first, with the decisions agreed before any code (persistence, startup, cascade behavior, where validation runs, catalog in the database vs. config); then building layer by layer, with tests that use the spec's examples as fixtures. Claude found the spec's internal contradictions while planning, and they are recorded rather than coded around.
+Built with Claude Code. No code was written until a plan had been reviewed and approved. The plan started from my brief, then went through a round of questions in which I made the main decisions.
+
+### 1. My initial brief
+
+> This is a coding assessment to be accomplished with Claude Code. The specification is located in [`ASSESSMENT.md`](ASSESSMENT.md) *(local path shortened)*. We need to first plan and review your recommendations. We need to determine the best method to persist data, best business domain model (for database, api) or framework to sit on top of the data layer (thinking Tactical Domain-Driven Design (DDD)). The assessment needs to be easy to start from an evaluators machine. We also need to document the options and why we went a certain direction. We also need to thoughtfully format the project in an organized and topic based manner.
+
+From this brief, the plan had to deliver:
+
+| Goal from the brief | Where it ended up |
+|---|---|
+| Best way to persist data | SQLite + Sequel ([ADR 0001](docs/adr/0001-persistence-sqlite-sequel.md)) |
+| Domain model for the database and API, using tactical DDD | Four layers in plain Ruby, with a `Package` aggregate ([ADR 0002](docs/adr/0002-tactical-ddd-layering.md), [domain model](docs/domain-model.md)) |
+| Easy to start on an evaluator's machine | `npm run setup` / `npm run dev`, or `docker compose up` ([ADR 0006](docs/adr/0006-dev-environment-and-startup.md), [Running the app](#running-the-app)) |
+| Document the options and why we chose each | Six ADRs, each with an options table, plus [spec discrepancies](docs/spec-discrepancies.md) |
+| Organize the project by topic | `backend/` split by DDD layer, `frontend/src/features/` by feature, `docs/` by topic |
+
+### 2. Decisions made while planning
+
+Claude Code read the spec and proposed options with trade-offs, and I chose:
+
+| Question | Options considered | My decision |
+|---|---|---|
+| How to persist saved packages | SQLite + Sequel · JSON file · PostgreSQL in Docker · ROM-rb | **SQLite + Sequel** |
+| How an evaluator starts the app | npm scripts + Docker · Docker only · npm scripts only | **npm scripts, with Docker as an alternative** |
+| I develop on Windows and the evaluator may use a Mac: do we need separate SQLite binaries? | – | **No.** The `sqlite3` gem is precompiled for each platform, and `Gemfile.lock` lists Windows, both Mac architectures and Linux |
+| Removing State Criminal while County or Federal depends on it | Block and offer to cascade · cascade automatically · block only | **Block and offer to cascade**, with a clear message about what will happen, and the choice to cancel and leave everything as it was ([ADR 0005](docs/adr/0005-dependent-removal-and-conflict-ux.md)) |
+| Where the rules run for real-time feedback | Backend only (a network call per click) · copied into TypeScript · **a middle option** | **The middle option:** the backend sends the rules as data, the frontend interprets them for instant feedback, and pricing and the final check on save stay on the backend |
+| *"Shouldn't these rules and prices load from the database?"* (I asked this after seeing the first draft, which used a YAML config file) | YAML config · database only · database seeded from YAML | **Database, seeded from YAML.** Storing each package's price at save time is documented as future work ([ADR 0003](docs/adr/0003-catalog-in-database-rules-as-data.md)) |
+
+### 3. The plan Claude Code produced
+
+The approved plan, in summary:
+
+- **Context:** a 4-hour assessment, judged mainly on domain modeling, keeping business logic separate, tests and documented trade-offs. Startup must be one command that works the same on Windows and macOS.
+- **Seven decisions, each recorded as an ADR:** the six above, plus *spec inconsistencies*. Template prices are calculated by the pricing engine rather than copied from the spec, and every contradiction in the spec is written down.
+- **Domain model:**
+  - A `Package` aggregate that enforces the dependency and conflict rules.
+  - A `SelectionPolicy` that interprets the rules.
+  - A `PricingEngine` made of discount strategies, with money in integer cents.
+  - Repository interfaces between the domain and SQLite.
+- **API:** catalog, price and validate endpoints, and package create/read/update/delete, plus latest and duplicate. A single error format; invalid saves return `422` with every rule they break.
+- **Frontend:** the mockups' two-column layout, four service-card states, red, yellow and green banners, debounced server-side pricing, and reopening the latest package on load.
+- **Build order, one hour per step:**
+  1. Scaffolding, the catalog, `Money` and the pricing engine, with specs based on the appendix examples.
+  2. The aggregate, the policy, the repositories, the use cases and the routes.
+  3. The frontend builder: rule interpreter, reducer, components and dialogs.
+  4. Stretch goals, Docker, the ADRs, this README, and a check from a fresh clone.
+- **Verification plan:**
+  - RSpec covering the four appendix examples and Flows 1–5.
+  - Vitest covering the rule interpreter and the reducer.
+  - A walk through Flows 1–5 in Chrome.
+  - Fresh-clone runs of both `npm run setup` and `docker compose up`.
+
+### 4. How the build differed from the plan
+
+| Area | Plan | What happened, and why |
+|---|---|---|
+| Catalog location | `config/catalog.yml` read by a YAML loader | Moved into database tables (`db/seeds/catalog.yml` → `rake db:seed` → `SequelCatalogRepository`), following the database decision above |
+| Use cases | One class per use case | Grouped into `PackageService` and `CatalogQueries`. Fewer, cohesive classes, and each public method is still one use case |
+| Real-time feedback | `/price` returns violations as well | A dedicated `POST /api/packages/evaluate` returns the price, violations and each service's availability in one call. `/price` and `/validate` remain, as the spec lists them |
+| Ruby web server | Not specified | **WEBrick**, which is pure Ruby, so there is nothing to compile on an evaluator's machine |
+| Node version | Node 20 | **Node 22.12+.** Upgrading Vitest to 5 cleared two critical `npm audit` findings, and Node 20 reached end-of-life in April 2026 |
+| Next.js vulnerability | – | Overrode Next 15's bundled PostCSS with the patched 8.5 version instead of upgrading to Next 16 ([Known issues](#known-issues)) |
+| Docker | Single-stage images | The first `docker compose up` failed: Sequel's `bigdecimal` dependency needs a C compiler. The backend image now compiles it in a separate build stage |
+| Flow 5 | Stay in the builder after saving | After testing, I chose to **return to Saved Packages** after saving an existing package, as the mockup shows |
+| New packages | `/` always opened the latest package | I found that **+ Create New Package** reopened the package I had just edited. The URL now decides what the builder opens: `/` for the latest package, `/?new=1` for an empty draft, `/?package=<id>` to edit one |
+| Spec discrepancies | Spec figures only | The mockups' totals also contradict the rules, so they are listed too ([spec discrepancies](docs/spec-discrepancies.md)) |
+| Browser testing | Screenshots in Chrome | Screenshots kept timing out, so the flows were checked by clicking through the real UI and reading the page's text and structure |
+
+### 5. How the work was done
+
+- **Plan first.** The decisions above were agreed before any code was written.
+- **Then build layer by layer.** Domain, application, infrastructure and HTTP on the backend, then the frontend. The spec's appendix examples and user flows were used as test fixtures.
+- **Then check what was built.** RSpec and Vitest, Flows 1–5 in a real browser, a fresh clone on Windows, and `docker compose up` from a clean state.
+- **The spec's contradictions were recorded, not hidden.** Claude Code found them while planning. They are listed in [spec discrepancies](docs/spec-discrepancies.md) instead of being made to fit.
+- **Commits mark each step**, from the first milestone to each later fix.
