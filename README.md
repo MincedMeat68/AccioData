@@ -8,32 +8,158 @@ The specification is in [`ASSESSMENT.md`](ASSESSMENT.md); the original instructi
 
 ---
 
-## Quick start
+## Running the app
 
-### Option A: native (recommended)
+There are two ways to run it. Both serve the app at **http://localhost:3000**.
 
-**Prerequisites:** Ruby 3.2+ (3.3 recommended) with Bundler, and Node.js 22.12+ (Node 20 reached end-of-life in April 2026, and the test runner, Vitest 5, requires 22).
+| | Run locally | Run in Docker |
+|---|---|---|
+| You need | Ruby 3.2+ (3.3 recommended), Node.js 22.12+, Git | Docker Desktop, Git |
+| Start command | `npm run setup` once, then `npm run dev` | `docker compose up --build` |
+| Best for | Development and running tests | Trying the app without installing Ruby or Node |
+| Data | `backend/db/development.sqlite3` | A Docker volume named `package-data` |
 
-| OS | Install |
+Both use port 3000, so run only one at a time.
+
+### Get the code
+
+```bash
+git clone https://github.com/MincedMeat68/AccioData.git
+cd AccioData
+```
+
+---
+
+### Run locally on macOS
+
+**1. Install the tools.** This uses [Homebrew](https://brew.sh); install it first if you don't have it. Homebrew also installs Apple's Xcode Command Line Tools, which provide the C compiler that one Ruby gem needs (see below).
+
+```bash
+brew install ruby@3.3 node
+```
+
+**2. Put Homebrew's Ruby first on your `PATH`.** macOS ships with Ruby 2.6, which is too old, and Homebrew doesn't replace it automatically. This works on both Apple Silicon and Intel Macs:
+
+```bash
+echo 'export PATH="$(brew --prefix ruby@3.3)/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+If you already manage Ruby with `rbenv` or `asdf`, skip steps 1–2 for Ruby and run `rbenv install` (or `asdf install`). The repo's `.ruby-version` file selects 3.3.6.
+
+**3. Check the versions.**
+
+```bash
+ruby -v    # 3.2 or newer (3.3.x expected)
+node -v    # v22.12 or newer
+```
+
+**4. Set up and start.**
+
+```bash
+npm run setup   # installs gems + npm packages, creates and seeds the SQLite database
+npm run dev     # starts the API (127.0.0.1:4567) and the app (localhost:3000)
+```
+
+Open **http://localhost:3000**. Press `Ctrl+C` in the terminal to stop both servers.
+
+### Run locally on Windows
+
+These commands use **PowerShell**.
+
+**1. Install the tools** with `winget`, which is built into Windows 10 and 11. The Ruby package includes the DevKit, a C compiler that one Ruby gem needs (see below).
+
+```powershell
+winget install --id RubyInstallerTeam.RubyWithDevKit.3.3 -e
+winget install --id OpenJS.NodeJS.LTS -e
+winget install --id Git.Git -e     # skip if you already have Git
+```
+
+**2. Close and reopen PowerShell** so the new `ruby`, `node` and `git` commands are on your `PATH`.
+
+**3. Check the versions.**
+
+```powershell
+ruby -v    # 3.3.x
+node -v    # v22.12 or newer
+```
+
+**4. Set up and start.**
+
+```powershell
+npm run setup
+npm run dev
+```
+
+Open **http://localhost:3000**. Press `Ctrl+C` to stop both servers.
+
+**If something goes wrong on Windows**
+- **`npm : File ...npm.ps1 cannot be loaded because running scripts is disabled`.** PowerShell's execution policy is blocking npm. Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, or use Command Prompt instead.
+- **`bundle install` fails while compiling `bigdecimal`.** The DevKit toolchain isn't set up. Run `ridk install`, choose option **3** (MSYS2 and MINGW development toolchain), then run `npm run setup` again.
+
+### Why one gem compiles
+
+`sqlite3` installs precompiled on every platform. The lockfile lists Windows, both Mac architectures and Linux, see [ADR 0001](docs/adr/0001-persistence-sqlite-sequel.md). One small gem, `bigdecimal`, which Sequel depends on, compiles a C extension during `bundle install`. That is why a C compiler is needed: the Xcode Command Line Tools on macOS, or the RubyInstaller DevKit on Windows.
+
+---
+
+### Run in Docker on macOS
+
+**1. Install Docker Desktop.** Either download it from [docker.com](https://www.docker.com/products/docker-desktop/) or use Homebrew:
+
+```bash
+brew install --cask docker
+```
+
+**2. Open Docker Desktop once** from Applications and accept its terms. Wait until the menu-bar icon shows the engine is running. Both Apple Silicon and Intel Macs work.
+
+**3. Build and start.** From the `AccioData` folder:
+
+```bash
+docker compose up --build
+```
+
+The first build takes a few minutes. When the log shows `Ready`, open **http://localhost:3000**.
+
+### Run in Docker on Windows
+
+Docker Desktop on Windows needs **WSL 2** (Windows Subsystem for Linux).
+
+**1. Install WSL 2.** Run this in an **Administrator** PowerShell, then restart Windows when it asks:
+
+```powershell
+wsl --install
+```
+
+**2. Install Docker Desktop.**
+
+```powershell
+winget install --id Docker.DockerDesktop -e
+```
+
+**3. Open Docker Desktop once** from the Start menu and accept its terms. Wait until the system-tray icon shows **Engine running**.
+
+**4. Build and start.** From the `AccioData` folder:
+
+```powershell
+docker compose up --build
+```
+
+The first build takes a few minutes. When the log shows `Ready`, open **http://localhost:3000**.
+
+### Docker commands (macOS and Windows)
+
+| Command | What it does |
 |---|---|
-| macOS | `brew install ruby node` (the Ruby that ships with macOS is 2.6, which is too old; follow Homebrew's note about adding Ruby to your `PATH`), or use `rbenv`/`asdf` with the included `.ruby-version` |
-| Windows | `winget install RubyInstallerTeam.RubyWithDevKit.3.3` and `winget install OpenJS.NodeJS.LTS` |
-| Linux | Your package manager, or `rbenv`/`asdf` |
+| `docker compose up --build` | Build the images and start the app, with logs in the terminal (`Ctrl+C` stops it) |
+| `docker compose up --build -d` | The same, in the background |
+| `docker compose logs -f` | Follow the logs of a background run |
+| `docker compose down` | Stop the app. **Saved packages are kept** in the `package-data` volume |
+| `docker compose down -v` | Stop the app and **delete the saved data**. The next start begins with an empty, freshly seeded database |
 
-```bash
-npm run setup   # bundle install, create + migrate + seed SQLite, npm install
-npm run dev     # API on http://127.0.0.1:4567, app on http://localhost:3000
-```
+What happens: the backend starts first and migrates and seeds an empty database on first boot. The frontend starts only after the backend passes its health check. Only port 3000 is exposed; the API is reachable only through the frontend. The backend image compiles `bigdecimal` in a separate build stage, so the final image has no compiler.
 
-Open **http://localhost:3000**.
-
-`sqlite3` installs as a precompiled gem on every platform (see [ADR 0001](docs/adr/0001-persistence-sqlite-sequel.md)). One small gem, `bigdecimal` (a Sequel dependency), compiles a C extension during `bundle install`. The tools above already include a compiler: Homebrew installs Apple's Xcode Command Line Tools, and the Windows RubyInstaller package includes a DevKit. On Linux, install `build-essential` or your distribution's equivalent.
-
-### Option B: Docker
-
-```bash
-docker compose up --build   # http://localhost:3000
-```
+---
 
 ### Other commands
 
