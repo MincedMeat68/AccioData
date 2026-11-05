@@ -3,7 +3,7 @@
   "private": true,
   "description": "Background Screening Package Builder - Next.js frontend + Sinatra backend",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12"
   },
   "scripts": {
     "setup": "npm install --no-audit --no-fund && npm run setup:backend && npm run setup:frontend",

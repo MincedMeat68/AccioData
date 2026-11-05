@@ -12,7 +12,7 @@ The specification is in [`ASSESSMENT.md`](ASSESSMENT.md); the original instructi
 
 ### Option A: native (recommended)
 
-**Prerequisites:** Ruby 3.2+ (3.3 recommended) with Bundler, and Node.js 20+.
+**Prerequisites:** Ruby 3.2+ (3.3 recommended) with Bundler, and Node.js 22.12+ (Node 20 reached end-of-life in April 2026, and the test runner, Vitest 5, requires 22).
 
 | OS | Install |
 |---|---|
@@ -146,6 +146,10 @@ The spec's own figures conflict with its rules in several places: the Comprehens
 ## Known issues
 
 - **`npm audit` reports a high-severity PostCSS advisory** (GHSA-qx2v-qp2m-jg93 and related). The vulnerable PostCSS is a copy bundled inside Next.js 15 (`node_modules/next/node_modules/postcss`). It only runs at build time on our own CSS, so this app is not exposed. The only fix offered is Next.js 16, a major version. We stayed on Next 15.5 rather than take on a framework upgrade during a time-boxed assessment. **Next step:** upgrade to Next 16 with its codemod (`npx @next/codemod@latest upgrade`), then re-run the typecheck, build and tests. The App Router code here uses no APIs that Next 16 removes, so the upgrade should be small.
+- **`npm install` warns that `eslint@9` is deprecated.** Next 15's lint config (`eslint-config-next@15`) only supports ESLint up to 9, so ESLint 10 also has to wait for the Next 16 upgrade above. ESLint is a development-only tool.
+- **Other audit findings are already fixed.**
+  - Vitest was upgraded from 3 to 5 to clear two critical advisories, in `tinypool` and `@vitest/mocker`. This is why Node 22.12+ is required.
+  - An npm `overrides` entry in `frontend/package.json` forces `minimatch@11` under `@typescript-eslint`, because `@typescript-eslint` still asks for a vulnerable `minimatch@10`. Remove the override once `@typescript-eslint` updates.
 
 ## With more time
 
